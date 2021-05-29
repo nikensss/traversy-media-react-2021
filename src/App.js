@@ -1,52 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AddTask } from './components/AddTask';
 import { Header } from './components/Header';
 import { Tasks } from './components/Tasks';
 
 const App = () => {
   const [showAddTask, setShowAddTask] = useState(false);
+  const [tasks, setTasks] = useState([]);
 
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      text: 'Doctors Appointment',
-      day: 'Tomorrow',
-      reminder: true
-    },
-    {
-      id: 2,
-      text: 'Meeting at school',
-      day: 'Tomorrow',
-      reminder: true
-    },
-    {
-      id: 3,
-      text: 'Food shopping',
-      day: 'Tomorrow',
-      reminder: false
-    }
-  ]);
-
-  const addTask = (task) => {
-    const id = tasks[tasks.length - 1].id + 1;
-    setTasks([...tasks, { id, ...task }]);
+  const fetchTasks = async () => {
+    const response = await fetch('http://localhost:6060/tasks');
+    return await response.json();
   };
 
-  const deleteTask = (id) => {
-    setTasks(tasks.filter((t) => t.id !== id));
+  const fetchTask = async (id) => {
+    const response = await fetch(`http://localhost:6060/tasks/${id}`);
+    return await response.json();
   };
 
-  const toggleReminder = (id) => {
-    setTasks(
-      tasks.map((t) => {
-        if (t.id !== id) return t;
+  const fetchAndSetTasks = () => fetchTasks().then(setTasks);
 
-        return {
-          ...t,
-          reminder: !t.reminder
-        };
-      })
-    );
+  useEffect(() => {
+    fetchTasks().then(setTasks);
+  }, []);
+
+  const addTask = async (task) => {
+    await fetch(`http://localhost:6060/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(task)
+    });
+    fetchAndSetTasks();
+  };
+
+  const deleteTask = async (id) => {
+    await fetch(`http://localhost:6060/tasks/${id}`, { method: 'DELETE' });
+    fetchAndSetTasks();
+  };
+
+  const toggleReminder = async (id) => {
+    const taskToUpdate = await fetchTask(id);
+    const update = { ...taskToUpdate, reminder: !taskToUpdate.reminder };
+
+    await fetch(`http://localhost:6060/tasks/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(update)
+    });
+    fetchAndSetTasks();
   };
 
   return (
